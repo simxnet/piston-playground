@@ -10,7 +10,6 @@ export type ExecuteOptionsKey = keyof ExecuteOptions;
 
 export interface ExecuteOptions {
 	code?: string;
-	language: string;
 	args?: string[];
 }
 

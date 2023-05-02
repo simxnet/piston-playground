@@ -7,6 +7,7 @@ import {
 	Input,
 	Menu,
 	Select,
+	SelectItem,
 	Switch,
 	Text,
 	Title,
@@ -38,7 +39,6 @@ export default function Home({ share }: { share: string | null }) {
 	});
 	const [executeOptions, setExecuteOptions] = useState<ExecuteOptions>({
 		code: "// hello",
-		language: options.language,
 		args: [],
 	});
 
@@ -54,7 +54,7 @@ export default function Home({ share }: { share: string | null }) {
 	const publish = api.links.addLink.useMutation();
 
 	const requiredFields: (string | undefined)[] = [
-		executeOptions.language,
+		options.language,
 		executeOptions.code,
 	];
 
@@ -68,7 +68,7 @@ export default function Home({ share }: { share: string | null }) {
 
 		execute.mutate({
 			args: executeOptions.args ?? [],
-			language: executeOptions.language,
+			language: options.language,
 			code: executeOptions.code as string,
 		});
 	}
@@ -87,7 +87,7 @@ export default function Home({ share }: { share: string | null }) {
 			content: Buffer.from(executeOptions.code as string, "utf-8").toString(
 				"base64",
 			),
-			language: executeOptions.language,
+			language: options.language,
 		});
 	}
 
@@ -132,11 +132,11 @@ export default function Home({ share }: { share: string | null }) {
 
 	useEffect(() => {
 		if (link.data) {
-			setExecuteOptions({
-				...executeOptions,
-				code: Buffer.from(link.data.content, "base64").toString("utf-8"),
-				language: link.data.language,
-			});
+			updateExecuteOption(
+				"code",
+				Buffer.from(link.data.content, "base64").toString("utf-8"),
+			);
+			updateOption("language", link.data.language);
 		}
 	}, [link.isLoading, link.data]);
 
@@ -164,18 +164,18 @@ export default function Home({ share }: { share: string | null }) {
 								placeholder="Select a language"
 								searchable
 								nothingFound="No language found"
+								value={options.language}
 								defaultValue={options.language}
-								onChange={(v) => updateOption("language", v ?? "javascript")}
-								data={[...new Set(runtimes.data?.map((r) => r.language))]}
+								onChange={(v) => updateOption("language", v as string)}
+								data={
+									runtimes.data?.map((l) => ({
+										label: `${l.language} ${l.version}`,
+										value: l.language,
+									})) as SelectItem[]
+								}
 							/>
 						)}
-						<Menu
-							closeOnItemClick={false}
-							position="bottom-end"
-							withArrow
-							shadow="md"
-							width={200}
-						>
+						<Menu position="bottom-end" withArrow shadow="md" width={200}>
 							<Menu.Target>
 								<ActionIcon size={"lg"} variant="filled">
 									<Cog size="1.125rem" />
@@ -221,7 +221,14 @@ export default function Home({ share }: { share: string | null }) {
 					value={executeOptions.code}
 					defaultValue={executeOptions.code}
 				/>
-				{options.args && <Input placeholder="Args here" />}
+				{options.args && (
+					<Input
+						onChange={(e) =>
+							updateExecuteOption("args", e.target.value.split(" "))
+						}
+						placeholder="Args here"
+					/>
+				)}
 				<Box
 					sx={(theme) => ({
 						backgroundColor:
