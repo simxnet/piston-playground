@@ -5,9 +5,6 @@ export interface Options {
 	language: string;
 }
 
-export type OptionKey = keyof Options;
-export type ExecuteOptionsKey = keyof ExecuteOptions;
-
 export interface ExecuteOptions {
 	code?: string;
 	args?: string[];

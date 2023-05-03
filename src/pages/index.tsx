@@ -1,8 +1,8 @@
-import { MONACO_OPTIONS } from "@/lib/constants";
+import { MONACO_OPTIONS, defaultMessage } from "@/lib/constants";
 import {
 	ActionIcon,
-	Box,
 	Button,
+	Code,
 	Flex,
 	Input,
 	Menu,
@@ -13,32 +13,31 @@ import {
 	Title,
 } from "@mantine/core";
 import { Editor } from "@monaco-editor/react";
-import { Bug, Code, Cog, Link, Play } from "lucide-react";
-import { useLocalStorage } from "@mantine/hooks";
-import {
-	ExecuteOptions,
-	ExecuteOptionsKey,
-	OptionKey,
-	Options,
-} from "@/lib/types";
+import { Bug, Code as CodeIcon, Cog, Link, Play } from "lucide-react";
+import { useLocalStorage, useSetState } from "@mantine/hooks";
+import { ExecuteOptions, Options } from "@/lib/types";
 import { modals } from "@mantine/modals";
 import { api } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { GetServerSideProps } from "next";
+import { useClipboard } from "@mantine/hooks";
+import { loadTheme } from "@/lib/utils";
+import Codebox from "@/components/Codebox";
 
 export default function Home({ share }: { share: string | null }) {
 	const [error, setError] = useState<string | undefined>();
+	const clipboard = useClipboard();
 	const [options, setOptions] = useLocalStorage<Options>({
 		key: "options",
 		defaultValue: {
 			vim: false,
 			args: false,
 			theme: "vs-theme",
-			language: "javascript",
+			language: "typescript",
 		},
 	});
-	const [executeOptions, setExecuteOptions] = useState<ExecuteOptions>({
-		code: "// hello",
+	const [executeOptions, setExecuteOptions] = useSetState<ExecuteOptions>({
+		code: defaultMessage,
 		args: [],
 	});
 
@@ -49,6 +48,7 @@ export default function Home({ share }: { share: string | null }) {
 		{
 			refetchOnMount: false,
 			refetchOnWindowFocus: false,
+			refetchOnReconnect: false,
 		},
 	);
 	const publish = api.links.addLink.useMutation();
@@ -91,31 +91,14 @@ export default function Home({ share }: { share: string | null }) {
 		});
 	}
 
-	function updateExecuteOption<K extends ExecuteOptionsKey>(
-		key: K,
-		value: ExecuteOptions[K],
-	) {
-		setExecuteOptions({
-			...executeOptions,
-			[key]: value,
-		});
-	}
-
-	function updateOption<K extends OptionKey>(key: K, value: Options[K]) {
-		setOptions({
-			...options,
-			[key]: value,
-		});
-	}
-
 	const openLinkModal = (link: string) =>
 		modals.openConfirmModal({
 			title: "Link created 🎉",
 			centered: true,
 			children: (
 				<Text size="sm">
-					Now you are ready to share this link with others! It has no sensitive
-					information so is safe to share!
+					Your link has been created, press "Copy and close" button and pase it
+					anywhere!
 					<br />
 					<br />
 					<Text underline weight={700} color="cyan">
@@ -125,18 +108,20 @@ export default function Home({ share }: { share: string | null }) {
 			),
 			labels: {
 				cancel: "Close",
-				confirm: "Confirm",
+				confirm: "Copy and close",
 			},
-			onConfirm: () => console.log("closed link modal"),
+			onConfirm: () => clipboard.copy(link),
 		});
 
 	useEffect(() => {
 		if (link.data) {
-			updateExecuteOption(
-				"code",
-				Buffer.from(link.data.content, "base64").toString("utf-8"),
-			);
-			updateOption("language", link.data.language);
+			setExecuteOptions({
+				code: Buffer.from(link.data.content, "base64").toString("utf-8"),
+			});
+			setOptions({
+				...options,
+				language: link.data.language,
+			});
 		}
 	}, [link.isLoading, link.data]);
 
@@ -144,6 +129,10 @@ export default function Home({ share }: { share: string | null }) {
 		if (publish.data)
 			return openLinkModal(`https://pstn.vercel.app/?share=${publish.data.id}`);
 	}, [publish.isLoading, publish.data]);
+
+	useEffect(() => {
+		loadTheme();
+	}, []);
 	return (
 		<Flex
 			direction={"column"}
@@ -166,7 +155,12 @@ export default function Home({ share }: { share: string | null }) {
 								nothingFound="No language found"
 								value={options.language}
 								defaultValue={options.language}
-								onChange={(v) => updateOption("language", v as string)}
+								onChange={(v) =>
+									setOptions({
+										...options,
+										language: v as string,
+									})
+								}
 								data={
 									runtimes.data?.map((l) => ({
 										label: `${l.language} ${l.version}`,
@@ -184,14 +178,24 @@ export default function Home({ share }: { share: string | null }) {
 							<Menu.Dropdown>
 								<Menu.Label>Settings</Menu.Label>
 								<Menu.Item
-									onClick={() => updateOption("vim", !options.vim)}
-									icon={<Code size={14} />}
+									onClick={() =>
+										setOptions({
+											...options,
+											vim: !options.vim,
+										})
+									}
+									icon={<CodeIcon size={14} />}
 									rightSection={<Switch size="xs" checked={options.vim} />}
 								>
 									Use VIM
 								</Menu.Item>
 								<Menu.Item
-									onClick={() => updateOption("args", !options.args)}
+									onClick={() =>
+										setOptions({
+											...options,
+											args: !options.args,
+										})
+									}
 									icon={<Bug size={14} />}
 									rightSection={<Switch size="xs" checked={options.args} />}
 								>
@@ -213,63 +217,60 @@ export default function Home({ share }: { share: string | null }) {
 					</Flex>
 				</Flex>
 				<Editor
-					theme="vs-dark"
+					theme="twilight"
 					options={MONACO_OPTIONS}
-					height={"25rem"}
+					height={"35rem"}
 					language={options.language}
-					onChange={(v) => updateExecuteOption("code", v)}
+					onChange={(v) =>
+						setExecuteOptions({
+							code: v,
+						})
+					}
 					value={executeOptions.code}
 					defaultValue={executeOptions.code}
 				/>
 				{options.args && (
 					<Input
 						onChange={(e) =>
-							updateExecuteOption("args", e.target.value.split(" "))
+							setExecuteOptions({
+								args: e.target.value.split(" "),
+							})
 						}
 						placeholder="Args here"
 					/>
 				)}
-				<Box
-					sx={(theme) => ({
-						backgroundColor:
-							theme.colorScheme === "dark"
-								? theme.colors.dark[6]
-								: theme.colors.gray[0],
-						padding: theme.spacing.xl,
-						borderRadius: theme.radius.md,
-						fontFamily: "monospace",
-						whiteSpace: "pre-wrap",
-					})}
-				>
-					{execute.isLoading ? (
-						"> Loading..."
-					) : execute.data ? (
-						execute.data.run.stderr ? (
-							<Text
-								color="red"
-								sx={{
-									fontFamily: "monospace",
-								}}
-							>
-								{execute.data.run.stderr}
-							</Text>
-						) : (
-							execute.data.run.output && (
-								<Text
-									sx={{
-										fontFamily: "monospace",
-									}}
-								>
-									{execute.data.run.output}
-								</Text>
+				<Flex gap={10}>
+					<Codebox>
+						{execute.isLoading ? (
+							"> Loading..."
+						) : execute.data ? (
+							execute.data.run.stderr ? (
+								<Code block color="red">
+									{execute.data.run.stderr}
+								</Code>
+							) : (
+								execute.data.run.output && (
+									<Code block>{execute.data.run.output}</Code>
+								)
 							)
-						)
-					) : error ? (
-						`> ${error}`
-					) : (
-						"> Write some code and run it and results will show up here"
+						) : error ? (
+							<Code color="red">{error}</Code>
+						) : (
+							<Code>
+								{"> Write some code and run it and results will show up here"}
+							</Code>
+						)}
+					</Codebox>
+					{execute.data?.compile?.output && (
+						<Codebox>
+							<Title order={5}>Compilation result:</Title>
+							<br />
+							<Code block color="yellow">
+								{execute.data.compile.output}
+							</Code>
+						</Codebox>
 					)}
-				</Box>
+				</Flex>
 			</Flex>
 		</Flex>
 	);
