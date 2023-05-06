@@ -1,9 +1,13 @@
 import { type AppType } from "next/app";
 import { MantineProvider } from "@mantine/core";
-import Head from "next/head";
 import { ModalsProvider } from "@mantine/modals";
+import { Montserrat as NextFont } from "next/font/google";
 
 import { api } from "@/lib/utils";
+
+const font = NextFont({
+	subsets: ["latin"],
+});
 
 const MyApp: AppType = ({ Component, pageProps }) => {
 	return (
@@ -13,6 +17,8 @@ const MyApp: AppType = ({ Component, pageProps }) => {
 			theme={{
 				colorScheme: "dark",
 				defaultRadius: "md",
+				primaryColor: "green",
+				fontFamily: font.style.fontFamily,
 			}}
 		>
 			<ModalsProvider>

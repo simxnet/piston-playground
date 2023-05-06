@@ -11,10 +11,13 @@ datasource db {
 }
 
 model Link {
-    id       String @id @default(cuid())
+    id       String  @id @default(cuid())
     language String
     content  String
+    issuer   String?
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+
+    @@map("links")
 }

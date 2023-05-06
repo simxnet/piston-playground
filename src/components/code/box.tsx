@@ -9,16 +9,11 @@ export default function Codebox({ children }: Props) {
 	return (
 		<Box
 			w={"100%"}
-			sx={(theme) => ({
-				backgroundColor:
-					theme.colorScheme === "dark"
-						? theme.colors.dark[6]
-						: theme.colors.gray[0],
-				padding: theme.spacing.xl,
-				borderRadius: theme.radius.md,
+			sx={{
+				backgroundColor: "transparent",
 				fontFamily: "monospace",
 				whiteSpace: "pre-wrap",
-			})}
+			}}
 		>
 			{children}
 		</Box>

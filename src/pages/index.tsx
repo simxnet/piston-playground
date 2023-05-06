@@ -1,28 +1,27 @@
 import { MONACO_OPTIONS, defaultMessage } from "@/lib/constants";
 import {
 	ActionIcon,
+	Badge,
 	Button,
-	Code,
 	Flex,
 	Input,
 	Menu,
 	Select,
-	SelectItem,
 	Switch,
 	Text,
 	Title,
 } from "@mantine/core";
 import { Editor } from "@monaco-editor/react";
-import { Bug, Code as CodeIcon, Cog, Link, Play } from "lucide-react";
+import { Bug, Code, Link, Play, Settings2, Terminal } from "lucide-react";
 import { useLocalStorage, useSetState } from "@mantine/hooks";
-import { ExecuteOptions, Options } from "@/lib/types";
+import { ExecuteOptions, Options, PistonExecuteResult } from "@/lib/types";
 import { modals } from "@mantine/modals";
 import { api } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { GetServerSideProps } from "next";
 import { useClipboard } from "@mantine/hooks";
 import { loadTheme } from "@/lib/utils";
-import Codebox from "@/components/Codebox";
+import Coderesult from "@/components/code/result";
 
 export default function Home({ share }: { share: string | null }) {
 	const [error, setError] = useState<string | undefined>();
@@ -34,6 +33,7 @@ export default function Home({ share }: { share: string | null }) {
 			args: false,
 			theme: "vs-theme",
 			language: "typescript",
+			legacyResult: false,
 		},
 	});
 	const [executeOptions, setExecuteOptions] = useSetState<ExecuteOptions>({
@@ -52,6 +52,8 @@ export default function Home({ share }: { share: string | null }) {
 		},
 	);
 	const publish = api.links.addLink.useMutation();
+
+	const languages = runtimes.data?.map((l) => l.language);
 
 	const requiredFields: (string | undefined)[] = [
 		options.language,
@@ -141,7 +143,12 @@ export default function Home({ share }: { share: string | null }) {
 				padding: "2rem",
 			}}
 		>
-			<Title>Piston Playground</Title>
+			<Flex direction={"column"} gap={5}>
+				<div>
+					<Badge>BETA</Badge>
+				</div>
+				<Title>Piston Playground</Title>
+			</Flex>
 			<Flex direction={"column"} gap={10}>
 				<Flex align={"center"} justify={"space-between"}>
 					<Text>Code editor</Text>
@@ -161,22 +168,31 @@ export default function Home({ share }: { share: string | null }) {
 										language: v as string,
 									})
 								}
-								data={
-									runtimes.data?.map((l) => ({
-										label: `${l.language} ${l.version}`,
-										value: l.language,
-									})) as SelectItem[]
-								}
+								data={[...new Set(languages).keys()]}
 							/>
 						)}
 						<Menu position="bottom-end" withArrow shadow="md" width={200}>
 							<Menu.Target>
 								<ActionIcon size={"lg"} variant="filled">
-									<Cog size="1.125rem" />
+									<Settings2 size="1.125rem" />
 								</ActionIcon>
 							</Menu.Target>
 							<Menu.Dropdown>
-								<Menu.Label>Settings</Menu.Label>
+								<Menu.Label>SETTINGS</Menu.Label>
+								<Menu.Item
+									onClick={() =>
+										setOptions({
+											...options,
+											legacyResult: !options.legacyResult,
+										})
+									}
+									icon={<Terminal size={14} />}
+									rightSection={
+										<Switch size="xs" checked={options.legacyResult} />
+									}
+								>
+									Legacy results
+								</Menu.Item>
 								<Menu.Item
 									onClick={() =>
 										setOptions({
@@ -184,10 +200,10 @@ export default function Home({ share }: { share: string | null }) {
 											vim: !options.vim,
 										})
 									}
-									icon={<CodeIcon size={14} />}
+									icon={<Code size={14} />}
 									rightSection={<Switch size="xs" checked={options.vim} />}
 								>
-									Use VIM
+									Vim mode
 								</Menu.Item>
 								<Menu.Item
 									onClick={() =>
@@ -239,38 +255,12 @@ export default function Home({ share }: { share: string | null }) {
 						placeholder="Args here"
 					/>
 				)}
-				<Flex gap={10}>
-					<Codebox>
-						{execute.isLoading ? (
-							"> Loading..."
-						) : execute.data ? (
-							execute.data.run.stderr ? (
-								<Code block color="red">
-									{execute.data.run.stderr}
-								</Code>
-							) : (
-								execute.data.run.output && (
-									<Code block>{execute.data.run.output}</Code>
-								)
-							)
-						) : error ? (
-							<Code color="red">{error}</Code>
-						) : (
-							<Code>
-								{"> Write some code and run it and results will show up here"}
-							</Code>
-						)}
-					</Codebox>
-					{execute.data?.compile?.output && (
-						<Codebox>
-							<Title order={5}>Compilation result:</Title>
-							<br />
-							<Code block color="yellow">
-								{execute.data.compile.output}
-							</Code>
-						</Codebox>
-					)}
-				</Flex>
+				<Coderesult
+					execute={execute.data as PistonExecuteResult}
+					loading={execute.isLoading}
+					error={error}
+					legacy={options.legacyResult}
+				/>
 			</Flex>
 		</Flex>
 	);

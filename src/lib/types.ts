@@ -3,6 +3,7 @@ export interface Options {
 	args: boolean;
 	theme: string;
 	language: string;
+	legacyResult: boolean;
 }
 
 export interface ExecuteOptions {
