@@ -13,10 +13,15 @@ export default async function handler(
 	req: NextApiRequest,
 	res: NextApiResponse,
 ) {
-	res.setHeader("Access-Control-Allow-Origin", "*");
+	res.setHeader(
+		"Access-Control-Allow-Origin",
+		`https://${process.env.VERCEL_URL}`,
+	);
 	res.setHeader("Access-Control-Request-Method", "*");
 	res.setHeader("Access-Control-Allow-Methods", "OPTIONS, GET");
-	res.setHeader("Access-Control-Allow-Headers", "*");
+	res.setHeader("Access-Control-Allow-Headers", "content-type");
+	res.setHeader("Referrer-Policy", "no-referrer");
+	res.setHeader("Access-Control-Allow-Credentials", "true");
 
 	if (req.method === "OPTIONS") {
 		res.writeHead(200);
